@@ -61,20 +61,15 @@ CREATE INDEX  IF NOT EXISTS idx_app_keys_status ON app_keys(status);`
 
 // SignParams 签名参数
 type SignParams struct {
-	AppID     string            `json:"app_id"`
-	Timestamp int64             `json:"timestamp"`
-	Nonce     string            `json:"nonce"`
-	Data      map[string]string `json:"data"`
+	AppID string            `json:"app_id"`
+	Data  map[string]string `json:"data"`
 }
 
 // VerifyParams 验签参数
 type VerifyParams struct {
-	AppID     string            `json:"app_id"`
-	Timestamp int64             `json:"timestamp"`
-	Nonce     string            `json:"nonce"`
-	Sign      string            `json:"sign"`
-	Data      map[string]string `json:"data"`
-	ClientIP  string            `json:"client_ip"`
+	AppID    string            `json:"app_id"`
+	Data     map[string]string `json:"data"`
+	ClientIP string            `json:"client_ip"`
 }
 
 // 错误定义
@@ -130,22 +125,21 @@ func (s *SignatureSDK) GetAppKey(appID string) (*AppKey, error) {
 }
 
 // GenerateSign 生成签名
-func (s *SignatureSDK) GenerateSign(params *SignParams) (string, error) {
+func (s *SignatureSDK) GenerateSign(params *SignParams) error {
 	// 获取应用密钥
 	appKey, err := s.GetAppKey(params.AppID)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	if appKey.Status != 1 {
-		return "", ErrAppDisabled
+		return ErrAppDisabled
 	}
 
 	// 构建签名字符串
-	signStr := s.buildSignString(params.Data, params.Timestamp, params.Nonce, appKey.SecretKey)
-
-	// 生成MD5签名
-	return s.md5Hash(signStr), nil
+	signStr := s.buildSignString(params.Data, appKey.SecretKey)
+	params.Data["sign"] = s.md5Hash(signStr)
+	return nil
 }
 
 // VerifySign 验证签名
@@ -164,18 +158,13 @@ func (s *SignatureSDK) VerifySign(params *VerifyParams) error {
 	if err := s.verifyIPWhitelist(params.ClientIP, appKey.IPsWhite); err != nil {
 		return err
 	}
-
-	// 验证时间戳（可选，防止重放攻击）
-	if err := s.verifyTimestamp(params.Timestamp); err != nil {
-		return err
-	}
-
+	sign := params.Data["sign"]
+	params.Data["sign"] = ""
 	// 构建签名字符串
-	signStr := s.buildSignString(params.Data, params.Timestamp, params.Nonce, appKey.SecretKey)
-
+	signStr := s.buildSignString(params.Data, appKey.SecretKey)
 	// 生成签名并比较
 	expectedSign := s.md5Hash(signStr)
-	if expectedSign != params.Sign {
+	if expectedSign != sign {
 		return ErrInvalidSign
 	}
 
@@ -183,14 +172,12 @@ func (s *SignatureSDK) VerifySign(params *VerifyParams) error {
 }
 
 // buildSignString 构建签名字符串
-func (s *SignatureSDK) buildSignString(data map[string]string, timestamp int64, nonce, secretKey string) string {
+func (s *SignatureSDK) buildSignString(data map[string]string, secretKey string) string {
 	// 添加系统参数
 	allParams := make(map[string]string)
 	for k, v := range data {
 		allParams[k] = v
 	}
-	allParams["timestamp"] = fmt.Sprintf("%d", timestamp)
-	allParams["nonce"] = nonce
 
 	// 获取所有键并按ASCII码排序
 	keys := make([]string, 0, len(allParams))
@@ -248,19 +235,6 @@ func (s *SignatureSDK) verifyIPWhitelist(clientIP string, whitelist []string) er
 	}
 
 	return ErrIPNotAllowed
-}
-
-// verifyTimestamp 验证时间戳（防止重放攻击）
-func (s *SignatureSDK) verifyTimestamp(timestamp int64) error {
-	now := time.Now().Unix()
-	diff := now - timestamp
-
-	// 允许5分钟的时间误差
-	if diff > 300 || diff < -300 {
-		return ErrExpiredRequest
-	}
-
-	return nil
 }
 
 // CreateAppKey 创建应用密钥
