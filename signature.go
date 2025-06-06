@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"sort"
 	"strings"
@@ -39,6 +40,20 @@ type SignatureSDK struct {
 
 // NewSignatureSDK 创建签名SDK实例
 func NewSignatureSDK(config *Config) *SignatureSDK {
+	query := `CREATE TABLE IF NOT EXISTS app_keys (	
+    id SERIAL PRIMARY KEY,
+    app_id VARCHAR(32) NOT NULL UNIQUE,
+    secret_key VARCHAR(64) NOT NULL,
+    ips_white JSONB NOT NULL,
+    status SMALLINT NOT NULL DEFAULT 1,
+    create_at BIGINT NOT NULL,
+    update_at BIGINT DEFAULT NULL); 
+CREATE INDEX IF NOT EXISTS  idx_app_keys_app_id ON app_keys(app_id);
+CREATE INDEX  IF NOT EXISTS idx_app_keys_status ON app_keys(status);`
+	if _, err := config.DB.Exec(query); err != nil {
+		log.Println("failed to create app_keys table: %w", err)
+	}
+
 	return &SignatureSDK{
 		db: config.DB,
 	}
