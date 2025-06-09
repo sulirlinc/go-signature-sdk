@@ -3,11 +3,9 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	_ "github.com/lib/pq"
 	"github.com/sulirlinc/go-signature-sdk"
 	"log"
-	"time"
-
-	_ "github.com/lib/pq"
 )
 
 func main() {
@@ -29,30 +27,24 @@ func main() {
 
 	// 生成签名
 	params := &go_signature_sdk.SignParams{
-		AppID:     "test_app",
-		Timestamp: time.Now().Unix(),
-		Nonce:     "random123",
+		AppID: "test_app",
 		Data: map[string]string{
 			"user_id": "12345",
 			"action":  "login",
 		},
 	}
 
-	sign, err := sdk.GenerateSign(params)
-	if err != nil {
-		log.Fatal("生成签名失败:", err)
+	if err := sdk.GenerateSign(params); err != nil {
+		log.Fatal("签名生成失败:", err)
 	}
 
-	fmt.Printf("生成的签名: %s\n", sign)
+	fmt.Printf("生成的签名: %s\n", params.Data["sign"])
 
 	// 验证签名
 	verifyParams := &go_signature_sdk.VerifyParams{
-		AppID:     params.AppID,
-		Timestamp: params.Timestamp,
-		Nonce:     params.Nonce,
-		Sign:      sign,
-		Data:      params.Data,
-		ClientIP:  "127.0.0.1",
+		AppID:    params.AppID,
+		Data:     params.Data,
+		ClientIP: "127.0.0.1",
 	}
 
 	err = sdk.VerifySign(verifyParams)
