@@ -141,23 +141,31 @@ func (s *SignatureSDK) GenerateSign(params *SignParams) error {
 	params.Data["sign"] = s.md5Hash(signStr)
 	return nil
 }
+func (s *SignatureSDK) VerifyIPs(AppID, clientIP string) (*AppKey, error) {
+	appKey, err := s.GetAppKey(AppID)
+	if err != nil {
+		return nil, err
+	}
+
+	if appKey.Status != 1 {
+		return nil, ErrAppDisabled
+	}
+
+	// 验证IP白名单
+	if err := s.verifyIPWhitelist(clientIP, appKey.IPsWhite); err != nil {
+		return nil, err
+	}
+	return appKey, nil
+}
 
 // VerifySign 验证签名
 func (s *SignatureSDK) VerifySign(params *VerifyParams) error {
 	// 获取应用密钥
-	appKey, err := s.GetAppKey(params.AppID)
+	appKey, err := s.VerifyIPs(params.AppID, params.ClientIP)
 	if err != nil {
 		return err
 	}
 
-	if appKey.Status != 1 {
-		return ErrAppDisabled
-	}
-
-	// 验证IP白名单
-	if err := s.verifyIPWhitelist(params.ClientIP, appKey.IPsWhite); err != nil {
-		return err
-	}
 	sign := params.Data["sign"]
 	params.Data["sign"] = ""
 	// 构建签名字符串
