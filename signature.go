@@ -22,13 +22,14 @@ type Config struct {
 
 // AppKey 应用密钥信息
 type AppKey struct {
-	ID        int      `json:"id"`
-	AppID     string   `json:"app_id"`
-	SecretKey string   `json:"secret_key"`
-	IPsWhite  []string `json:"ips_white"`
-	Status    int      `json:"status"`
-	CreateAt  int64    `json:"create_at"`
-	UpdateAt  *int64   `json:"update_at"`
+	ID         int                    `json:"id"`
+	AppID      string                 `json:"app_id"`
+	SecretKey  string                 `json:"secret_key"`
+	IPsWhite   []string               `json:"ips_white"`
+	Status     int                    `json:"status"`
+	CreateAt   int64                  `json:"create_at"`
+	UpdateAt   *int64                 `json:"update_at"`
+	Attributes map[string]interface{} `json:"attributes"`
 }
 
 // SignatureSDK 签名SDK
@@ -83,7 +84,7 @@ var (
 // GetAppKey 根据app_id获取应用密钥信息
 func (s *SignatureSDK) GetAppKey(appID string) (*AppKey, error) {
 	query := `
-		SELECT id, app_id, secret_key, ips_white, status, create_at, update_at
+		SELECT id, app_id, secret_key, ips_white, status, create_at, update_at, attributes
 		FROM app_keys 
 		WHERE app_id = $1
 	`
@@ -102,6 +103,7 @@ func (s *SignatureSDK) GetAppKey(appID string) (*AppKey, error) {
 		&appKey.Status,
 		&appKey.CreateAt,
 		&updateAt,
+		&appKey.Attributes,
 	)
 
 	if err != nil {
@@ -291,18 +293,18 @@ func (s *SignatureSDK) verifyIPWhitelist(clientIP string, whitelist []string) er
 }
 
 // CreateAppKey 创建应用密钥
-func (s *SignatureSDK) CreateAppKey(appID, secretKey string, ipsWhite []string) error {
+func (s *SignatureSDK) CreateAppKey(appID, secretKey string, ipsWhite []string, attributes map[string]interface{}) error {
 	ipsWhiteJSON, err := json.Marshal(ipsWhite)
 	if err != nil {
 		return fmt.Errorf("序列化IP白名单失败: %w", err)
 	}
 
 	query := `
-		INSERT INTO app_keys (app_id, secret_key, ips_white, status, create_at)
-		VALUES ($1, $2, $3, 1, $4)
+		INSERT INTO app_keys (app_id, secret_key, ips_white, status, create_at, attributes)
+		VALUES ($1, $2, $3, 1, $4, $5)
 	`
 
-	_, err = s.db.Exec(query, appID, secretKey, ipsWhiteJSON, time.Now().Unix())
+	_, err = s.db.Exec(query, appID, secretKey, ipsWhiteJSON, time.Now().Unix(), attributes)
 	if err != nil {
 		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
 			return fmt.Errorf("应用ID已存在: %s", appID)
