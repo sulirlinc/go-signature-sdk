@@ -316,7 +316,7 @@ func (s *SignatureSDK) CreateAppKey(appID, secretKey string, ipsWhite []string, 
 }
 
 // UpdateAppKey 更新应用密钥
-func (s *SignatureSDK) UpdateAppKey(appID, secretKey string, ipsWhite []string, status int) error {
+func (s *SignatureSDK) UpdateAppKey(appID, secretKey string, ipsWhite []string, status int, attributes map[string]interface{}) error {
 	ipsWhiteJSON, err := json.Marshal(ipsWhite)
 	if err != nil {
 		return fmt.Errorf("序列化IP白名单失败: %w", err)
@@ -324,11 +324,11 @@ func (s *SignatureSDK) UpdateAppKey(appID, secretKey string, ipsWhite []string, 
 
 	query := `
 		UPDATE app_keys 
-		SET secret_key = $2, ips_white = $3, status = $4, update_at = $5
+		SET secret_key = $2, ips_white = $3, status = $4, update_at = $5, attributes = $6
 		WHERE app_id = $1
 	`
 
-	result, err := s.db.Exec(query, appID, secretKey, ipsWhiteJSON, status, time.Now().Unix())
+	result, err := s.db.Exec(query, appID, secretKey, ipsWhiteJSON, status, time.Now().Unix(), attributes)
 	if err != nil {
 		return fmt.Errorf("更新应用密钥失败: %w", err)
 	}
