@@ -44,6 +44,7 @@ func NewSignatureSDK(config *Config) *SignatureSDK {
     secret_key VARCHAR(64) NOT NULL,
     ips_white JSONB NOT NULL,
     status SMALLINT NOT NULL DEFAULT 1,
+    attributes JSONB NOT NULL DEFAULT '{}',
     create_at BIGINT NOT NULL,
     update_at BIGINT DEFAULT NULL); 
 CREATE INDEX IF NOT EXISTS  idx_app_keys_app_id ON app_keys(app_id);
