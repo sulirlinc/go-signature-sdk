@@ -7,14 +7,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/lib/pq"
 	"log"
 	"net"
 	"sort"
 	"strings"
 	"time"
-
-	"github.com/lib/pq"
-	_ "github.com/lib/pq"
 )
 
 // Config SDK配置
@@ -61,15 +59,15 @@ CREATE INDEX  IF NOT EXISTS idx_app_keys_status ON app_keys(status);`
 
 // SignParams 签名参数
 type SignParams struct {
-	AppID string            `json:"app_id"`
-	Data  map[string]string `json:"data"`
+	AppID string                 `json:"app_id"`
+	Data  map[string]interface{} `json:"data"`
 }
 
 // VerifyParams 验签参数
 type VerifyParams struct {
-	AppID    string            `json:"app_id"`
-	Data     map[string]string `json:"data"`
-	ClientIP string            `json:"client_ip"`
+	AppID    string                 `json:"app_id"`
+	Data     map[string]interface{} `json:"data"`
+	ClientIP string                 `json:"client_ip"`
 }
 
 // 错误定义
@@ -137,9 +135,14 @@ func (s *SignatureSDK) GenerateSign(params *SignParams) error {
 	}
 
 	// 构建签名字符串
-	signStr := s.buildSignString(params.Data, appKey.SecretKey)
-	params.Data["sign"] = s.md5Hash(signStr)
+	params.Data["sign"] = GenerateSign(params.Data, appKey.SecretKey)
 	return nil
+}
+
+// GenerateSign 生成签名
+func GenerateSign(data map[string]interface{}, secretKey string) string {
+	signStr := buildSignString(data, secretKey)
+	return md5Hash(signStr)
 }
 func (s *SignatureSDK) VerifyIPs(AppID, clientIP string) (*AppKey, error) {
 	appKey, err := s.GetAppKey(AppID)
@@ -165,26 +168,65 @@ func (s *SignatureSDK) VerifySign(params *VerifyParams) error {
 	if err != nil {
 		return err
 	}
+	return VerifySign(params, appKey.SecretKey)
+}
 
+// VerifySign 验证签名
+func VerifySign(params *VerifyParams, secretKey string) error {
 	sign := params.Data["sign"]
 	params.Data["sign"] = ""
-	// 构建签名字符串
-	signStr := s.buildSignString(params.Data, appKey.SecretKey)
-	// 生成签名并比较
-	expectedSign := s.md5Hash(signStr)
-	if expectedSign != sign {
+	if GenerateSign(params.Data, secretKey) != sign {
 		return ErrInvalidSign
 	}
-
 	return nil
 }
 
+// flattenMap 递归展开嵌套的map
+func flattenMap(data interface{}, prefix string, result map[string]string) {
+	switch v := data.(type) {
+	case map[string]interface{}:
+		for k, val := range v {
+			key := k
+			if prefix != "" {
+				key = prefix + "." + k
+			}
+			flattenMap(val, key, result)
+		}
+	case []interface{}:
+		for i, val := range v {
+			key := fmt.Sprintf("%s[%d]", prefix, i)
+			flattenMap(val, key, result)
+		}
+	default:
+		if v != nil {
+			result[prefix] = fmt.Sprintf("%v", v)
+		}
+	}
+}
+
 // buildSignString 构建签名字符串
-func (s *SignatureSDK) buildSignString(data map[string]string, secretKey string) string {
-	// 添加系统参数
+func buildSignString(data map[string]interface{}, secretKey string) string {
+	// 展开所有嵌套参数
 	allParams := make(map[string]string)
+
 	for k, v := range data {
-		allParams[k] = v
+		if v == nil {
+			continue
+		}
+
+		// 如果是嵌套结构，递归展开
+		switch val := v.(type) {
+		case map[string]interface{}:
+			flattenMap(val, k, allParams)
+		case []interface{}:
+			flattenMap(val, k, allParams)
+		default:
+			// 简单值直接转换
+			strVal := fmt.Sprintf("%v", val)
+			if strVal != "" {
+				allParams[k] = strVal
+			}
+		}
 	}
 
 	// 获取所有键并按ASCII码排序
@@ -206,8 +248,10 @@ func (s *SignatureSDK) buildSignString(data map[string]string, secretKey string)
 	return signStr
 }
 
+// 示例用法
+
 // md5Hash 生成MD5哈希
-func (s *SignatureSDK) md5Hash(text string) string {
+func md5Hash(text string) string {
 	hash := md5.Sum([]byte(text))
 	return strings.ToUpper(hex.EncodeToString(hash[:]))
 }
