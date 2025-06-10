@@ -20,7 +20,7 @@ func main() {
 	sdk := go_signature_sdk.NewSignatureSDK(&go_signature_sdk.Config{DB: db})
 
 	// 创建应用密钥
-	err = sdk.CreateAppKey("test_app", "my_secret_key", []string{"127.0.0.1"})
+	err = sdk.CreateAppKey("test_app", "my_secret_key", []string{"127.0.0.1"}, map[string]interface{}{"description": "测试应用"})
 	if err != nil {
 		log.Println("创建应用密钥失败:", err)
 	}
@@ -28,7 +28,7 @@ func main() {
 	// 生成签名
 	params := &go_signature_sdk.SignParams{
 		AppID: "test_app",
-		Data: map[string]string{
+		Data: map[string]interface{}{
 			"user_id": "12345",
 			"action":  "login",
 		},
