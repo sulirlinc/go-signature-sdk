@@ -303,8 +303,8 @@ func (s *SignatureSDK) CreateAppKey(appID, secretKey string, ipsWhite []string, 
 		INSERT INTO app_keys (app_id, secret_key, ips_white, status, create_at, attributes)
 		VALUES ($1, $2, $3, 1, $4, $5)
 	`
-
-	_, err = s.db.Exec(query, appID, secretKey, ipsWhiteJSON, time.Now().Unix(), attributes)
+	d, _ := json.Marshal(attributes)
+	_, err = s.db.Exec(query, appID, secretKey, ipsWhiteJSON, time.Now().Unix(), d)
 	if err != nil {
 		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
 			return fmt.Errorf("应用ID已存在: %s", appID)
@@ -327,8 +327,8 @@ func (s *SignatureSDK) UpdateAppKey(appID, secretKey string, ipsWhite []string, 
 		SET secret_key = $2, ips_white = $3, status = $4, update_at = $5, attributes = $6
 		WHERE app_id = $1
 	`
-
-	result, err := s.db.Exec(query, appID, secretKey, ipsWhiteJSON, status, time.Now().Unix(), attributes)
+	d, _ := json.Marshal(attributes)
+	result, err := s.db.Exec(query, appID, secretKey, ipsWhiteJSON, status, time.Now().Unix(), d)
 	if err != nil {
 		return fmt.Errorf("更新应用密钥失败: %w", err)
 	}
