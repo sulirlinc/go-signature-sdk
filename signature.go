@@ -93,6 +93,7 @@ func (s *SignatureSDK) GetAppKey(appID string) (*AppKey, error) {
 
 	var appKey AppKey
 	var ipsWhiteJSON []byte
+	var attributesJSON []byte
 	var updateAt sql.NullInt64
 
 	err := row.Scan(
@@ -103,7 +104,7 @@ func (s *SignatureSDK) GetAppKey(appID string) (*AppKey, error) {
 		&appKey.Status,
 		&appKey.CreateAt,
 		&updateAt,
-		&appKey.Attributes,
+		&attributesJSON,
 	)
 
 	if err != nil {
@@ -116,6 +117,11 @@ func (s *SignatureSDK) GetAppKey(appID string) (*AppKey, error) {
 	// 解析IP白名单JSON
 	if err := json.Unmarshal(ipsWhiteJSON, &appKey.IPsWhite); err != nil {
 		return nil, fmt.Errorf("解析IP白名单失败: %w", err)
+	}
+
+	// 解析Attributes
+	if err := json.Unmarshal(attributesJSON, &appKey.Attributes); err != nil {
+		return nil, fmt.Errorf("解析Attributes失败: %w", err)
 	}
 
 	if updateAt.Valid {
