@@ -34,8 +34,8 @@ func main() {
 		},
 	}
 
-	if err := sdk.GenerateSign(params); err != nil {
-		log.Fatal("签名生成失败:", err)
+	if err, sign := sdk.GenerateSign(params); err != nil {
+		log.Fatal("签名生成失败:", err, sign)
 	}
 
 	fmt.Printf("生成的签名: %s\n", params.Data["sign"])

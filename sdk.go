@@ -33,20 +33,21 @@ CREATE INDEX  IF NOT EXISTS idx_app_keys_status ON app_keys(status);`
 }
 
 // GenerateSign 生成签名
-func (s *SignatureSDK) GenerateSign(params *SignParams) error {
+func (s *SignatureSDK) GenerateSign(params *SignParams) (error, string) {
 	// 获取应用密钥
 	appKey, err := s.GetAppKey(params.AppID)
 	if err != nil {
-		return err
+		return err, ""
 	}
 
 	if appKey.Status != 1 {
-		return ErrAppDisabled
+		return ErrAppDisabled, ""
 	}
 
 	// 构建签名字符串
-	params.Data["sign"] = GenerateSign(params.Data, appKey.SecretKey)
-	return nil
+	sign, s2 := GenerateSign(params.Data, appKey.SecretKey)
+	params.Data["sign"] = sign
+	return nil, s2
 }
 
 // VerifyIPs 验证IP和获取应用密钥

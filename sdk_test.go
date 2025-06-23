@@ -246,7 +246,7 @@ func TestGenerateSign(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			sign := GenerateSign(tc.data, tc.secretKey)
+			sign, _ := GenerateSign(tc.data, tc.secretKey)
 			if sign == "" {
 				t.Error("签名生成失败")
 			}
@@ -265,7 +265,7 @@ func TestVerifySign(t *testing.T) {
 	}
 
 	// 生成签名
-	sign := GenerateSign(data, secretKey)
+	sign, _ := GenerateSign(data, secretKey)
 	data["sign"] = sign
 
 	// 测试验证
@@ -310,9 +310,9 @@ func TestSDKGenerateSign(t *testing.T) {
 		},
 	}
 
-	err = sdk.GenerateSign(params)
+	err, s := sdk.GenerateSign(params)
 	if err != nil {
-		t.Errorf("SDK签名生成失败: %v", err)
+		t.Errorf("SDK签名生成失败:%s, %v", s, err)
 	}
 
 	if params.Data["sign"] == nil {
@@ -341,7 +341,7 @@ func TestSDKVerifySign(t *testing.T) {
 		"timestamp": time.Now().Unix(),
 		"nonce":     "test_nonce",
 	}
-	sign := GenerateSign(data, secretKey)
+	sign, _ := GenerateSign(data, secretKey)
 	data["sign"] = sign
 
 	testCases := []struct {
