@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -12,6 +13,30 @@ import (
 func md5Hash(text string) string {
 	hash := md5.Sum([]byte(text))
 	return strings.ToUpper(hex.EncodeToString(hash[:]))
+}
+
+// formatValue 格式化值，避免科学计数法
+func formatValue(v interface{}) string {
+	switch val := v.(type) {
+	case float64:
+		// 检查是否为整数
+		if val == float64(int64(val)) {
+			return strconv.FormatInt(int64(val), 10)
+		}
+		return strconv.FormatFloat(val, 'f', -1, 64)
+	case float32:
+		// 检查是否为整数
+		if val == float32(int32(val)) {
+			return strconv.FormatInt(int64(val), 10)
+		}
+		return strconv.FormatFloat(float64(val), 'f', -1, 32)
+	case int, int8, int16, int32, int64:
+		return fmt.Sprintf("%d", val)
+	case uint, uint8, uint16, uint32, uint64:
+		return fmt.Sprintf("%d", val)
+	default:
+		return fmt.Sprintf("%v", val)
+	}
 }
 
 // flattenMap 递归展开嵌套的map
@@ -32,7 +57,7 @@ func flattenMap(data interface{}, prefix string, result map[string]string) {
 		}
 	default:
 		if v != nil {
-			result[prefix] = fmt.Sprintf("%v", v)
+			result[prefix] = formatValue(v)
 		}
 	}
 }
